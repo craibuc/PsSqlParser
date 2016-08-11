@@ -18,7 +18,7 @@ At the PowerShell prompt (abbreviated to `PS >`), type:
 PS > Get-Execution Policy
 ```
 
-If the result is `Restricted`, open a ticket with the help desk to have the policy changed `RemoteSigned`.
+If the result is `Restricted`, type:
 
 ```powershell
 PS > Set-Execution-Policy RemoteSigned
@@ -62,7 +62,7 @@ NOTE: This only needs to be done once for each user.
 ## Install Software
 
 ### Powershell Module
-Copy the contents of the ZIP file to `Modules` folder (`C:\Users\<sNUMBER>\Documents\WindowsPowerShell\Modules`)
+Copy the contents of the ZIP file to `Modules` folder (`C:\Users\<USER_NAME>\Documents\WindowsPowerShell\Modules`)
 
 The folder structure should resemble:
 
@@ -123,7 +123,7 @@ FROM    patient p
 INNER JOIN pat_enc_hsp pe ON p.pat_id=pe.pat_id
 ```
 
-is contained in `~\Desktop\query.txt` (`~` is an alias for `C:\Users\sNUMBER`).
+is contained in `~\Desktop\query.txt` (`~` is an alias for `C:\Users\<USER_NAME>`).
 
 Open PowerShell, type the follow commands at the prompt:
 
