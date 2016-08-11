@@ -90,7 +90,7 @@ Steps:
 4. Right click the file and choose ‘Properties’ from the context menu
 5. Click <kbd>Unblock</kbd>, then <kbd>OK</kbd>
 
-	![Properties dialog](https://raw.githubusercontent.com/craibuc/PsSqlParser/master/images/properties.png)
+	![Properties dialog](https://github.com/craibuc/PsSqlParser/blob/master/Images/Properties.png)
 
 6. Move or copy the file to the `PsSqlParser` folder.
 
