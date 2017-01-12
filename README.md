@@ -75,8 +75,8 @@ The folder structure should resemble:
 		 - PsSqlParser.psd1
 		 - PsSqlParser.psm1
 		 + Public \
-		 + Private \
 		   - Invoke-SqlParser.ps1
+		 + Private \
  ...
 ```
 
@@ -106,8 +106,8 @@ The folder structure should resemble:
 		 - PsSqlParser.psd1
 		 - PsSqlParser.psm1
 		 + Public \
-		 + Private \
 		   - Invoke-SqlParser.ps1
+		 + Private \
  ...
 ```
 
@@ -118,9 +118,9 @@ The folder structure should resemble:
 Assuming that this query:
 
 ```sql
-SELECT  p.pat_mrn_id,p.pat_name,pe.pat_enc_csn_id ENC_ID 
-FROM    patient p 
-INNER JOIN pat_enc_hsp pe ON p.pat_id=pe.pat_id
+SELECT p.id,p.mrn,p.name,e.id 
+FROM patient p 
+INNER JOIN encounter e ON p.id=e.patient_id
 ```
 
 is contained in `~\Desktop\query.txt` (`~` is an alias for `C:\Users\<USER_NAME>`).
@@ -137,13 +137,14 @@ PS > $query = Get-Content ~\Desktop\query.txt -Raw
 
 # invoke the parser, passing the query's text, indicating that uses Oracle's syntax
 PS > Invoke-SqlParser -Query $query -Syntax 'oracle'
-Table                          ColumnName                    ColumnType                                         Location
------                          ----------                    ----------                                         -------- 
-patient                        pat_id                        Linked                                      eljoinCondition 
-patient                        pat_mrn_id                    Linked                                         elselectlist 
-patient                        pat_name                      Linked                                         elselectlist 
-pat_enc_hsp                    pat_id                        Linked                                      eljoinCondition 
-pat_enc_hsp                    pat_enc_csn_id                Linked                                         elselectlist
+Table       ColumnName      ColumnType         Location
+-----       ----------      ----------         --------
+patient     id              Linked        joinCondition
+patient     id              Linked         resultColumn
+patient     mrn             Linked         resultColumn
+patient     name            Linked         resultColumn
+encounter   patient_id      Linked        joinCondition
+encounter   id              Linked         resultColumn
 ```
 
 This can be shortened using the pipeline (`|`), aliases (`Invoke-SqlParser` => `parse`) and positional parameters (`-Query` is the first parameter; `-Syntax` is the second parameter):
@@ -155,11 +156,11 @@ PS > gc ~\Desktop\query.txt -Raw | parse -S 'oracle'
 ```powershell
 # concatenate
 PS >  gc ~\Desktop\query.txt -Raw | parse -S 'oracle' | % {$_.table + "." + $_.columnname}
-patient.pat_id
-patient.pat_mrn_id
-patient.pat_name
-pat_enc_hsp.pat_id
-pat_enc_hsp.pat_enc_csn_id
+patient.id
+patient.mrn
+patient.name
+encountee.patient_id
+encountee.id
 ```
 
 If you are using the trial edition, you can determine the length of the SQL statement is within the 1000-character limitation:
