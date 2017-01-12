@@ -1,43 +1,45 @@
 ﻿
 <#
 .SYNOPSIS
-Parses a SQL statement and extracts its table/column combinations.
+    Parses a SQL statement and extracts its table/column combinations.
 
 .DESCRIPTION
-Parses a SQL statement and extracts its table/column combinations.
+    Parses a SQL statement and extracts its table/column combinations.
 
 .PARAMETER Query (-Q)
-The SQL statement to be processed
+    The SQL statement to be processed
 
 .PARAMETER Syntax (-S)
-The SQL statement's syntax (allowed: 'mssql','oracle')
+    The SQL statement's syntax (allowed: 'mssql','oracle')
 
-.PARAMETER Syntax (-U)
-Return a unique list of table/column combinations (NOT IMPLEMENTED)
-
-.EXAMPLE
-PS> Invoke-SqlParser -Q "SELECT p.pat_mrn_id,p.pat_name,pe.pat_enc_csn_id ENC_ID FROM patient p INNER JOIN pat_enc_hsp pe ON p.pat_id=pe.pat_id" -S "oracle"
-Table        ColumnName      ColumnType         Location
- -----       ----------      ----------         --------
- patient     pat_id          Linked      eljoinCondition
- patient     pat_mrn_id      Linked         elselectlist
- patient     pat_name        Linked         elselectlist
-pat_enc_hsp  pat_id          Linked      eljoinCondition
-pat_enc_hsp  pat_enc_csn_id  Linked         elselectlist
-
-Invokes the parsing engine, using Oracle syntax, extracting the list of tables and fields.
+.PARAMETER Unique (-U)
+    Return a unique list of table/column combinations (NOT IMPLEMENTED)
 
 .EXAMPLE
-PS> Get-Content ~\Desktop\query.sql -Raw | Invoke-SqlParser -S "oracle"
-Table        ColumnName      ColumnType         Location
- -----       ----------      ----------         --------
- patient     pat_id          Linked      eljoinCondition
- patient     pat_mrn_id      Linked         elselectlist
- patient     pat_name        Linked         elselectlist
-pat_enc_hsp  pat_id          Linked      eljoinCondition
-pat_enc_hsp  pat_enc_csn_id  Linked         elselectlist
+    PS> Invoke-SqlParser -Query "SELECT p.id,p.mrn,p.name,e.id FROM patient p INNER JOIN encounter e ON p.id=e.patient_id" -Syntax 'oracle'
+    Table       ColumnName      ColumnType         Location
+    -----       ----------      ----------         --------
+    patient     id              Linked        joinCondition
+    patient     id              Linked         resultColumn
+    patient     mrn             Linked         resultColumn
+    patient     name            Linked         resultColumn
+    encounter   patient_id      Linked        joinCondition
+    encounter   id              Linked         resultColumn
 
-The contents of a file are passed on the pipeline to the parsing engine.
+    Invokes the parsing engine, using Oracle syntax, extracting the list of tables and fields.
+
+.EXAMPLE
+    PS> Get-Content ~\Desktop\query.sql -Raw | Invoke-SqlParser -Syntax 'oracle'
+    Table       ColumnName      ColumnType         Location
+    -----       ----------      ----------         --------
+    patient     id              Linked        joinCondition
+    patient     id              Linked         resultColumn
+    patient     mrn             Linked         resultColumn
+    patient     name            Linked         resultColumn
+    encounter   patient_id      Linked        joinCondition
+    encounter   id              Linked         resultColumn
+
+    The contents of a file are passed on the pipeline to the parsing engine.
 
 #>
 function Invoke-SqlParser {
@@ -48,7 +50,7 @@ function Invoke-SqlParser {
         [alias('Q')]
         [string[]]$Query,
 
-        [Parameter(Position=1, Mandatory=$true)]
+        [Parameter(Position=1)]
         [ValidateSet('mssql','oracle')]
         [alias('S')]
         [string]$Syntax = 'oracle',
@@ -65,11 +67,12 @@ function Invoke-SqlParser {
         switch ($Syntax)
         {
             "mssql" {
-                $db = [gudusoft.gsqlparser.TDbVendor]::DbVMssql
+                $db = [gudusoft.gsqlparser.EDbVendor]::DbVMssql
             }
             "oracle" {
-                $db = [gudusoft.gsqlparser.TDbVendor]::DbVOracle
+                $db = [gudusoft.gsqlparser.EDbVendor]::DbVOracle
             }
+            # TODO: add others
         }
 
         Write-Debug "Syntax: $db"
@@ -89,7 +92,7 @@ function Invoke-SqlParser {
             Write-Verbose $Q
 
             # attempt to parse the query
-            $sqlParser.SqlText.Text = $Q
+            $sqlParser.SqlText = $Q
             $code = $sqlParser.Parse()
 
             # display parsing errors
@@ -99,7 +102,7 @@ function Invoke-SqlParser {
 
             $objects=@()
 
-            for ($i = 0; $i -lt $sqlparser.SqlStatements.Count(); $i++)
+            for ($i = 0; $i -lt $sqlparser.SqlStatements.Count; $i++)
             {
                 $sqlStatement = $sqlParser.SqlStatements[$i]
 
@@ -120,7 +123,7 @@ function Invoke-SqlParser {
 }
 
 ##
-# 
+# examine each statement recursively, if necessary
 #
 
 function Analyze
@@ -128,45 +131,39 @@ function Analyze
 
     [CmdletBinding()]
     Param(
-        [gudusoft.gsqlparser.TSelectSqlStatement]$sqlStatement
+        [gudusoft.gsqlparser.stmt.TSelectSqlStatement]$sqlStatement
     )
 
     $objects=@()
 
-    for ($j=0; $j -lt $sqlStatement.Tables.Count(); $j++)
+    for ($j=0; $j -lt $sqlStatement.Tables.Count; $j++)
     {
 
-        $tableName = $sqlStatement.Tables[$j].TableFullname
+        $tableName = $sqlStatement.Tables[$j].Fullname
         Write-Debug "Table: $tableName"
 
-        # $tbl = [PsCustomObject]@{Table=$tableName; Columns=@()}
-        # $objects += $tbl
-
-        for ($k=0; $k-lt $sqlStatement.Tables[$j].linkedColumns.Count(); $k++)
+        for ($k=0; $k-lt $sqlStatement.Tables[$j].linkedColumns.Count; $k++)
         {
-            $columnName = $sqlStatement.Tables[$j].linkedColumns[$k].fieldAttrName
+            $columnName = $sqlStatement.Tables[$j].linkedColumns[$k].ColumnNameOnly
             Write-Debug "`tColumn: $columnName"
 
             $location = $sqlStatement.Tables[$j].linkedColumns[$k].Location
             Write-Debug "`tlocation: $location"
 
-            $object = [PsCustomObject]@{Table=$tableName;ColumnName=$columnName;ColumnType='Linked';Location=$location}
-            $objects += $object
-
-            # $col = [PsCustomObject]@{ColumnName=$columnName;ColumnType='Linked';Location=$location}
-            # $tbl.Columns += $col
+            $objects += [PsCustomObject]@{Table=$tableName;ColumnName=$columnName;ColumnType='Linked';Location=$location}
 
         } # columns
 
     } # tables
 
-    if ($sqlStatement.orphanColumns.Count() > 0)
+    # TODO: include orphans
+    if ($sqlStatement.orphanColumns.Count > 0)
     {
         Write-Host "orphanColumns"
     }
 
     # process queries w/i queries (e.g. scalar subquery; inline views)
-    for ($i=0; $i -lt $sqlStatement.ChildNodes.Count(); $i++)
+    for ($i=0; $i -lt $sqlStatement.ChildNodes.Count; $i++)
     {
         # recurse if child is a SQL statement
         if ($sqlStatement.ChildNodes[$i] -is [gudusoft.gsqlparser.TCustomSqlStatement])

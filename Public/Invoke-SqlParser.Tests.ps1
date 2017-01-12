@@ -6,46 +6,27 @@
 
 Describe "Invoke-SqlParser" {
 
-    $query = "SELECT p.pat_mrn_id,p.pat_name,pe.pat_enc_csn_id ENC_ID FROM patient p INNER JOIN pat_enc_hsp pe ON p.pat_id=pe.pat_id"
+    # arrange
+    $query = "SELECT p.id,p.mrn,p.name,e.id FROM patient p INNER JOIN encounter e ON p.id=e.patient_id"
     $syntax = "oracle"
 
-    Context "If the -Query parameter has not been supplied" {
-
-        It -Skip "Should throw an exception" {
-            { Invoke-SqlParser -S $syntax }| Should Throw
-        }
-
-    }
-
-    Context "If the -Syntax parameter has not been supplied" {
-
-        It -Skip "Should throw an exception" {
-            { Invoke-SqlParser $query } | Should Throw
-        }
-
-    }
-
-    Context "If any invalid -Syntax parameter has been supplied" {
-
-        It "Should throw an exception" {
-            { Invoke-SqlParser $query -S "not valid"} | Should Throw
-        }
-
-    }
-
-    Context "-Q and -S parameter supplied" {
+    Context "Well-formatted, two-table query" {
 
         $expected = @()
-        $expected += [PsCustomObject]@{Table='patient';ColumnName='pat_id';ColumnType='Linked';Location='eljoinCondition'}
-        $expected += [PsCustomObject]@{Table='patient';ColumnName='pat_mrn_id';ColumnType='Linked';Location='elselectlist'}
-        $expected += [PsCustomObject]@{Table='patient';ColumnName='pat_name';ColumnType='Linked';Location='elselectlist'}
-        $expected += [PsCustomObject]@{Table='pat_enc_hsp';ColumnName='pat_id';ColumnType='Linked';Location='eljoinCondition'}
-        $expected += [PsCustomObject]@{Table='pat_enc_hsp';ColumnName='pat_enc_csn_id';ColumnType='Linked';Location='elselectlist'}
+        $expected += [PsCustomObject]@{Table='patient';ColumnName='id';ColumnType='Linked';Location='joinCondition'}
+        $expected += [PsCustomObject]@{Table='patient';ColumnName='id';ColumnType='Linked';Location='resultColumn'}
+        $expected += [PsCustomObject]@{Table='patient';ColumnName='mrn';ColumnType='Linked';Location='resultColumn'}
+        $expected += [PsCustomObject]@{Table='patient';ColumnName='name';ColumnType='Linked';Location='resultColumn'}
+        $expected += [PsCustomObject]@{Table='encounter';ColumnName='id';ColumnType='Linked';Location='resultColumn'}
+        $expected += [PsCustomObject]@{Table='encounter';ColumnName='patient_id';ColumnType='Linked';Location='joinCondition'}
 
         It "Should return an array of PsCustomObjects that contain tables and column details" {
+            # act
             $actual = Invoke-SqlParser -Q $query -S $syntax -Verbose
-            # $actual | Should Be $expected
-            (Compare-Object $actual $expected).Count | Should Be 0
+
+            # assert            
+            @(Compare-Object $Expected $Actual -Property Table, ColumnName, ColumnType, Location |
+                Where-Object { $_.SideIndicator -eq '=>' }).Count | Should Be 0
         }
 
     }
