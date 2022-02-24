@@ -46,16 +46,14 @@ function Invoke-SqlParser {
 
     [CmdletBinding()]
     param (
-        [Parameter(Position=0, Mandatory=$true, ValueFromPipeline=$true)]
-        [alias('Q')]
+        [Parameter(Position=0, Mandatory, ValueFromPipeline)]
         [string[]]$Query,
 
-        [Parameter(Position=1)]
+        [Parameter(Position=1,Mandatory)]
         [ValidateSet('mssql','oracle')]
-        [alias('S')]
-        [string]$Syntax = 'oracle',
+        [string]$Syntax,
 
-        [alias('U')]
+        [Parameter(Position=2)]
         [switch]$Unique
     )
 
